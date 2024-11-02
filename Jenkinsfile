@@ -1,9 +1,12 @@
 pipeline {
     agent any
+    environment {
+        BRANCH_NAME = 'main' // Ensure Jenkins looks at the correct branch
+    }
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
+                git branch: env.BRANCH_NAME, url: 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
             }
         }
         stage('Install Dependencies') {
@@ -126,16 +129,7 @@ pipeline {
     }
     post {
         always {
-            echo 'Cleaning up workspace and Docker images...'
-            script {
-                docker.image('docker:latest').inside {
-                    sh '''
-                        docker rmi baseerburney/user-service:latest || true
-                        docker rmi baseerburney/order-service:latest || true
-                        docker rmi baseerburney/product-service:latest || true
-                    '''
-                }
-            }
+            echo 'Cleaning up workspace...'
             cleanWs()
             echo 'Build complete.'
         }
