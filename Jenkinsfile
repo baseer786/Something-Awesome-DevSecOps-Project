@@ -152,8 +152,8 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-            timeout(time: 10, unit: 'MINUTES') {
-                steps {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') {
                     script {
                         echo "Activating virtual environment at $VIRTUAL_ENV for deployment"
                         sh """
