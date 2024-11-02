@@ -153,15 +153,12 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                timeout(time: 10, unit: 'MINUTES') {
-                    script {
-                        echo "Activating virtual environment at $VIRTUAL_ENV for deployment"
-                        sh """
-                            source $VIRTUAL_ENV/bin/activate
-                            ansible localhost -m ping -i ansible/inventory
-                            ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --timeout=30
-                        """
-                    }
+                script {
+                    echo "Activating virtual environment at $VIRTUAL_ENV for deployment"
+                    sh """
+                        source $VIRTUAL_ENV/bin/activate
+                        ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --timeout=30 --skip-tags gather_facts
+                    """
                 }
             }
         }
