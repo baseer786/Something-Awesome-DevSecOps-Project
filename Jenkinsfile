@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    environment {
+        VENV_PATH = '/Users/baseerikram/venvs/ansible-env' // Path to the virtual environment
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -133,13 +137,25 @@ pipeline {
 
         stage('Setup Ansible') {
             steps {
-                sh 'ansible-galaxy collection install kubernetes.core'
+                script {
+                    // Activate virtual environment and install the required Ansible collection
+                    sh """
+                        source ${env.VENV_PATH}/bin/activate
+                        ansible-galaxy collection install kubernetes.core || echo "Collection already installed."
+                    """
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'ansible-playbook ansible/deploy.yml'
+                script {
+                    // Activate virtual environment and run the playbook
+                    sh """
+                        source ${env.VENV_PATH}/bin/activate
+                        ansible-playbook -i ansible/inventory ansible/deploy.yml
+                    """
+                }
             }
         }
     }
