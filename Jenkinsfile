@@ -35,7 +35,7 @@ pipeline {
                     steps {
                         script {
                             try {
-                                sh 'cd services/user-service && npm run lint'
+                                sh 'cd services/user-service && npx eslint .'
                             } catch (Exception e) {
                                 echo "Lint errors in User Service, continuing..."
                             }
@@ -46,7 +46,7 @@ pipeline {
                     steps {
                         script {
                             try {
-                                sh 'cd services/order-service && npm run lint'
+                                sh 'cd services/order-service && npx eslint .'
                             } catch (Exception e) {
                                 echo "Lint errors in Order Service, continuing..."
                             }
@@ -57,7 +57,7 @@ pipeline {
                     steps {
                         script {
                             try {
-                                sh 'cd services/product-service && npm run lint'
+                                sh 'cd services/product-service && npx eslint .'
                             } catch (Exception e) {
                                 echo "Lint errors in Product Service, continuing..."
                             }
@@ -67,6 +67,6 @@ pipeline {
             }
         }
 
-        // Additional stages for testing, building, or deploying can be added here
+        // Additional stages for testing, building, or deploying can be added here.
     }
 }
