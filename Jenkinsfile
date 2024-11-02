@@ -67,6 +67,6 @@ pipeline {
             }
         }
 
-        // Additional stages for testing, building, or deploying can be added here.
+        // Additional stages for testing, building, or deploying can be added here
     }
 }
