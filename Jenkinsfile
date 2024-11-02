@@ -2,19 +2,20 @@ pipeline {
     agent any
 
     environment {
-        VIRTUAL_ENV = '/Users/baseerikram/venvs/ansible-env' // Adjust this path as necessary
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        VIRTUAL_ENV = '/Users/baseerikram/venvs/ansible-env'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
+                git url: 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git', branch: 'main'
             }
         }
 
         stage('Check Environment') {
             steps {
-                echo "Checking environment settings..."
+                echo 'Checking environment settings...'
                 sh 'echo Current PATH: $PATH'
                 sh 'which ansible'
             }
@@ -51,21 +52,21 @@ pipeline {
                 stage('User Service ESLint') {
                     steps {
                         dir('services/user-service') {
-                            sh 'npx eslint . || echo "Lint errors in User Service, continuing..."'
+                            sh 'npx eslint .'
                         }
                     }
                 }
                 stage('Order Service ESLint') {
                     steps {
                         dir('services/order-service') {
-                            sh 'npx eslint . || echo "Lint errors in Order Service, continuing..."'
+                            sh 'npx eslint .'
                         }
                     }
                 }
                 stage('Product Service ESLint') {
                     steps {
                         dir('services/product-service') {
-                            sh 'npx eslint . || echo "Lint errors in Product Service, continuing..."'
+                            sh 'npx eslint .'
                         }
                     }
                 }
@@ -126,9 +127,10 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                withCredentials([string(credentialsId: 'dockerhub-credentials', variable: 'DOCKERHUB_PASSWORD')]) {
                     sh '''
-                        echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
+                        echo $DOCKERHUB_PASSWORD | docker login -u baseerburney --password-stdin
+
                         docker push baseerburney/user-service:latest
                         docker push baseerburney/order-service:latest
                         docker push baseerburney/product-service:latest
@@ -140,25 +142,25 @@ pipeline {
         stage('Setup Ansible') {
             steps {
                 script {
-                    echo 'Activating virtual environment at $VIRTUAL_ENV'
-                    sh '''
+                    echo "Activating virtual environment at $VIRTUAL_ENV"
+                    sh """
                         source $VIRTUAL_ENV/bin/activate
                         ansible-galaxy collection install kubernetes.core
-                    '''
+                    """
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
-            steps {
-                timeout(time: 10, unit: 'MINUTES') {
+            timeout(time: 10, unit: 'MINUTES') {
+                steps {
                     script {
-                        echo 'Activating virtual environment at $VIRTUAL_ENV for deployment'
-                        sh '''
+                        echo "Activating virtual environment at $VIRTUAL_ENV for deployment"
+                        sh """
                             source $VIRTUAL_ENV/bin/activate
-                            ansible localhost -m ping -i ansible/inventory --inventory-plugin ini
-                            ansible-playbook -i ansible/inventory --inventory-plugin ini ansible/deploy.yml -e ansible_connection=local --timeout=30 -vvv
-                        '''
+                            ansible localhost -m ping -i ansible/inventory
+                            ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --timeout=30
+                        """
                     }
                 }
             }
@@ -170,9 +172,6 @@ pipeline {
             echo 'Cleaning up...'
             sh 'docker logout'
             sh 'deactivate || true'
-        }
-        success {
-            echo 'Deployment completed successfully!'
         }
         failure {
             echo 'Deployment failed. Please check the logs.'
