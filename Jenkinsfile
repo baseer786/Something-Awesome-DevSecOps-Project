@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        VENV_PATH = '/Users/baseerikram/venvs/ansible-env' // Path to the virtual environment
+        VENV_PATH = '/Users/baseerikram/venvs/ansible-env' // Adjust this if necessary
     }
 
     stages {
@@ -140,7 +140,10 @@ pipeline {
                 script {
                     // Activate virtual environment and install the required Ansible collection
                     sh """
+                        echo "Activating virtual environment at ${env.VENV_PATH}"
                         source ${env.VENV_PATH}/bin/activate
+                        which ansible
+                        ansible --version
                         ansible-galaxy collection install kubernetes.core || echo "Collection already installed."
                     """
                 }
@@ -152,7 +155,10 @@ pipeline {
                 script {
                     // Activate virtual environment and run the playbook
                     sh """
+                        echo "Activating virtual environment at ${env.VENV_PATH} for deployment"
                         source ${env.VENV_PATH}/bin/activate
+                        which ansible
+                        ansible --version
                         ansible-playbook -i ansible/inventory ansible/deploy.yml
                     """
                 }
