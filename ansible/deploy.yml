@@ -1,0 +1,39 @@
+- hosts: localhost
+  vars:
+     ansible_python_interpreter: "/Users/baseerikram/venvs/ansible-env/bin/python3"
+  tasks:
+    - name: Deploy User Service Deployment
+      kubernetes.core.k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition: "{{ lookup('file', playbook_dir + '/../services/user-service/deployment.yaml') }}"
+
+    - name: Deploy User Service Service
+      kubernetes.core.k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition: "{{ lookup('file', playbook_dir + '/../services/user-service/service.yaml') }}"
+
+    - name: Deploy Order Service Deployment
+      kubernetes.core.k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition: "{{ lookup('file', playbook_dir + '/../services/order-service/deployment.yaml') }}"
+
+    - name: Deploy Order Service Service
+      kubernetes.core.k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition: "{{ lookup('file', playbook_dir + '/../services/order-service/service.yaml') }}"
+
+    - name: Deploy Product Service Deployment
+      kubernetes.core.k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition: "{{ lookup('file', playbook_dir + '/../services/product-service/deployment.yaml') }}"
+
+    - name: Deploy Product Service Service
+      kubernetes.core.k8s:
+        kubeconfig: "~/.kube/config"
+        state: present
+        definition: "{{ lookup('file', playbook_dir + '/../services/product-service/service.yaml') }}"
