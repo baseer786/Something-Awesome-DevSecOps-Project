@@ -1,14 +1,13 @@
 pipeline {
     agent any
-
     environment {
-        VIRTUAL_ENV = '/Users/baseerikram/venvs/ansible-env'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Using your Jenkins DockerHub credentials ID
+        DOCKER_USERNAME = 'baseerburney'
     }
-
     stages {
-        stage('Checkout') {
+        stage('Declarative: Checkout SCM') {
             steps {
-                git url: 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git', branch: 'main'
+                checkout scm
             }
         }
 
@@ -126,13 +125,13 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                withCredentials([usernamePassword(credentialsId: "${DOCKER_CREDENTIALS_ID}", usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
                     sh '''
-                        echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-
-                        docker push baseerburney/user-service:latest
-                        docker push baseerburney/order-service:latest
-                        docker push baseerburney/product-service:latest
+                    echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+                    docker push baseerburney/user-service:latest
+                    docker push baseerburney/order-service:latest
+                    docker push baseerburney/product-service:latest
+                    docker logout
                     '''
                 }
             }
@@ -141,11 +140,11 @@ pipeline {
         stage('Setup Ansible') {
             steps {
                 script {
-                    echo "Activating virtual environment at $VIRTUAL_ENV"
-                    sh """
-                        source $VIRTUAL_ENV/bin/activate
-                        ansible-galaxy collection install kubernetes.core
-                    """
+                    echo 'Activating virtual environment at /Users/baseerikram/venvs/ansible-env'
+                    sh '''
+                    source /Users/baseerikram/venvs/ansible-env/bin/activate
+                    ansible-galaxy collection install kubernetes.core
+                    '''
                 }
             }
         }
@@ -153,24 +152,49 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Activating virtual environment at $VIRTUAL_ENV for deployment"
-                    sh """
-                        source $VIRTUAL_ENV/bin/activate
-                        ansible-playbook -i ansible/inventory ansible/deploy.yml --connection=local
-                    """
+                    echo 'Activating virtual environment at /Users/baseerikram/venvs/ansible-env for deployment'
+                    sh '''
+                    source /Users/baseerikram/venvs/ansible-env/bin/activate
+                    ansible-playbook -i ansible/inventory ansible/deploy.yml --connection=local
+                    '''
                 }
             }
         }
-    }
 
+        stage('Kubernetes Health Checks') {
+            steps {
+                echo 'Running Kubernetes Health Checks...'
+                sh '''
+                kubectl get deployments
+                kubectl get pods
+                kubectl get services
+                kubectl describe deployments
+                kubectl describe pods
+                kubectl describe services
+                # Get logs for all running pods
+                for pod in $(kubectl get pods -o=name); do
+                    kubectl logs $pod
+                done
+                '''
+            }
+        }
+
+        stage('Declarative: Post Actions') {
+            steps {
+                echo 'Cleaning up...'
+                sh '''
+                docker logout || true
+                if [ -n "$VIRTUAL_ENV" ]; then
+                    deactivate || true
+                fi
+                '''
+            }
+        }
+    }
     post {
         always {
-            echo 'Cleaning up...'
-            sh 'docker logout'
-            sh 'deactivate || true'  // Ignore error if deactivate is not found
-        }
-        failure {
-            echo 'Deployment failed. Please check the logs.'
+            echo 'Pipeline finished. Cleaning workspace.'
+            cleanWs()
         }
     }
 }
