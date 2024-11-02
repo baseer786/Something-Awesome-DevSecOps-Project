@@ -1,46 +1,47 @@
 pipeline {
     agent any
-
-    environment {
-        DOCKER_HUB_REPO = "baseerburney"  // Replace with your Docker Hub username
-        DOCKER_CREDENTIALS_ID = "dockerhub-credentials"  // Jenkins credentials ID for Docker Hub
-        SNYK_TOKEN_CREDENTIALS_ID = "snyk-token"  // Jenkins credentials ID for Snyk token
-    }
-
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
+                git 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
             }
         }
-
         stage('Install Dependencies') {
+            agent {
+                docker { image 'node:14' } // Use Node.js 14 Docker image for npm
+            }
             steps {
                 sh 'cd services/user-service && npm install'
                 sh 'cd services/order-service && npm install'
                 sh 'cd services/product-service && npm install'
             }
         }
-
         stage('Run ESLint') {
+            agent {
+                docker { image 'node:14' }
+            }
             steps {
                 sh 'cd services/user-service && npm run lint'
                 sh 'cd services/order-service && npm run lint'
                 sh 'cd services/product-service && npm run lint'
             }
         }
-
         stage('Run Tests') {
+            agent {
+                docker { image 'node:14' }
+            }
             steps {
                 sh 'cd services/user-service && npm test'
                 sh 'cd services/order-service && npm test'
                 sh 'cd services/product-service && npm test'
             }
         }
-
         stage('Security Scans') {
             parallel {
                 stage('OWASP Dependency-Check') {
+                    agent {
+                        docker { image 'owasp/dependency-check' }
+                    }
                     steps {
                         sh 'dependency-check.sh --project "User Service" --scan ./services/user-service'
                         sh 'dependency-check.sh --project "Order Service" --scan ./services/order-service'
@@ -48,8 +49,11 @@ pipeline {
                     }
                 }
                 stage('Snyk Scan') {
+                    agent {
+                        docker { image 'snyk/snyk-cli' }
+                    }
                     steps {
-                        withCredentials([string(credentialsId: SNYK_TOKEN_CREDENTIALS_ID, variable: 'SNYK_TOKEN')]) {
+                        withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
                             sh 'cd services/user-service && snyk test'
                             sh 'cd services/order-service && snyk test'
                             sh 'cd services/product-service && snyk test'
@@ -57,8 +61,11 @@ pipeline {
                     }
                 }
                 stage('SonarQube Analysis') {
+                    agent {
+                        docker { image 'sonarsource/sonar-scanner-cli' }
+                    }
                     steps {
-                        withSonarQubeEnv('SonarQube') { // Configure your SonarQube server in Jenkins
+                        withSonarQubeEnv('SonarQube') {
                             sh 'cd services/user-service && sonar-scanner'
                             sh 'cd services/order-service && sonar-scanner'
                             sh 'cd services/product-service && sonar-scanner'
@@ -66,50 +73,58 @@ pipeline {
                     }
                 }
                 stage('Gauntlt Security Tests') {
+                    agent {
+                        docker { image 'gauntlt/gauntlt' }
+                    }
                     steps {
-                        sh 'gem install gauntlt'
                         sh 'gauntlt attacks/*.attack'
                     }
                 }
             }
         }
-
         stage('Build Docker Images') {
+            agent {
+                docker { image 'docker:latest' }
+            }
             steps {
-                sh 'docker build -t ${DOCKER_HUB_REPO}/user-service:latest ./services/user-service'
-                sh 'docker build -t ${DOCKER_HUB_REPO}/order-service:latest ./services/order-service'
-                sh 'docker build -t ${DOCKER_HUB_REPO}/product-service:latest ./services/product-service'
+                sh 'docker build -t baseerburney/user-service:latest ./services/user-service'
+                sh 'docker build -t baseerburney/order-service:latest ./services/order-service'
+                sh 'docker build -t baseerburney/product-service:latest ./services/product-service'
             }
         }
-
         stage('Push Docker Images') {
+            agent {
+                docker { image 'docker:latest' }
+            }
             steps {
-                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-                    sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
-                    sh 'docker push ${DOCKER_HUB_REPO}/user-service:latest'
-                    sh 'docker push ${DOCKER_HUB_REPO}/order-service:latest'
-                    sh 'docker push ${DOCKER_HUB_REPO}/product-service:latest'
+                withCredentials([string(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                    sh 'echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin'
+                    sh 'docker push baseerburney/user-service:latest'
+                    sh 'docker push baseerburney/order-service:latest'
+                    sh 'docker push baseerburney/product-service:latest'
                 }
             }
         }
-
         stage('Deploy to Kubernetes') {
+            agent {
+                docker { image 'bitnami/kubectl:latest' }
+            }
             steps {
                 sh 'ansible-playbook ansible/deploy.yml'
             }
         }
     }
-
     post {
         always {
             echo 'Cleaning up workspace and Docker images...'
-            sh 'docker rmi ${DOCKER_HUB_REPO}/user-service:latest || true'
-            sh 'docker rmi ${DOCKER_HUB_REPO}/order-service:latest || true'
-            sh 'docker rmi ${DOCKER_HUB_REPO}/product-service:latest || true'
+            sh '''
+                docker rmi baseerburney/user-service:latest || true
+                docker rmi baseerburney/order-service:latest || true
+                docker rmi baseerburney/product-service:latest || true
+            '''
             cleanWs()
-        }
-        failure {
-            echo 'Build failed. Please check the error logs.'
+            echo 'Build complete.'
         }
     }
 }
+
