@@ -1,8 +1,7 @@
 pipeline {
     agent any
-
     environment {
-        VENV_PATH = '/Users/baseerikram/venvs/ansible-env' // Adjust this if necessary
+        VENV_PATH = '/Users/baseerikram/venvs/ansible-env'  // Update if the path is different
     }
 
     stages {
@@ -138,13 +137,10 @@ pipeline {
         stage('Setup Ansible') {
             steps {
                 script {
-                    // Activate virtual environment and install the required Ansible collection
                     sh """
                         echo "Activating virtual environment at ${env.VENV_PATH}"
                         source ${env.VENV_PATH}/bin/activate
-                        which ansible
-                        ansible --version
-                        ansible-galaxy collection install kubernetes.core || echo "Collection already installed."
+                        ansible-galaxy collection install kubernetes.core || echo "Collection already installed or installation failed"
                     """
                 }
             }
@@ -153,13 +149,15 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Activate virtual environment and run the playbook
                     sh """
                         echo "Activating virtual environment at ${env.VENV_PATH} for deployment"
                         source ${env.VENV_PATH}/bin/activate
-                        which ansible
-                        ansible --version
-                        ansible-playbook -i ansible/inventory ansible/deploy.yml
+                        
+                        # Test ansible connection to localhost
+                        ansible localhost -m ping -i ansible/inventory || echo "Ansible ping to localhost failed"
+
+                        # Run playbook with limited fact gathering and timeout
+                        ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --timeout=30
                     """
                 }
             }
