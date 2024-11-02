@@ -2,11 +2,13 @@ pipeline {
     agent any
     environment {
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
+        KUBECONFIG = '/Users/baseerikram/.kube/config'
     }
+
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
             }
         }
 
@@ -18,11 +20,9 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
-                // Testing Docker container run access
                 script {
                     docker.image('node:14').inside {
-                        sh 'node --version'
-                        sh 'npm --version'
+                        sh 'npm install'
                     }
                 }
             }
@@ -32,8 +32,7 @@ pipeline {
             steps {
                 script {
                     docker.image('node:14').inside {
-                        sh 'npm install -g eslint'
-                        sh 'eslint . || true'  // Allow to fail to continue pipeline
+                        sh 'npm run lint || echo "Linting errors were found."'
                     }
                 }
             }
@@ -43,7 +42,7 @@ pipeline {
             steps {
                 script {
                     docker.image('node:14').inside {
-                        sh 'npm test || true'  // Adjust this as needed for your test framework
+                        sh 'npm test || echo "Some tests failed."'
                     }
                 }
             }
@@ -53,26 +52,26 @@ pipeline {
             parallel {
                 stage('OWASP Dependency-Check') {
                     steps {
-                        echo 'Running OWASP Dependency-Check'
-                        // Insert dependency-check logic here
+                        echo 'Running OWASP Dependency-Check...'
+                        // Add Dependency-Check commands here
                     }
                 }
                 stage('Snyk Scan') {
                     steps {
-                        echo 'Running Snyk Scan'
-                        // Insert Snyk scanning logic here
+                        echo 'Running Snyk Scan...'
+                        // Add Snyk commands here
                     }
                 }
                 stage('SonarQube Analysis') {
                     steps {
-                        echo 'Running SonarQube Analysis'
-                        // Insert SonarQube scanning logic here
+                        echo 'Running SonarQube Analysis...'
+                        // Add SonarQube commands here
                     }
                 }
                 stage('Gauntlt Security Tests') {
                     steps {
-                        echo 'Running Gauntlt Security Tests'
-                        // Insert Gauntlt security testing logic here
+                        echo 'Running Gauntlt Security Tests...'
+                        // Add Gauntlt commands here
                     }
                 }
             }
@@ -81,8 +80,9 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 script {
-                    def image = docker.build("your_dockerhub_username/your_project_name")
-                    sh 'docker images'
+                    docker.build('baseerburney/product-service', 'product-service/')
+                    docker.build('baseerburney/order-service', 'order-service/')
+                    docker.build('baseerburney/user-service', 'user-service/')
                 }
             }
         }
@@ -91,7 +91,9 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry('', 'dockerhub-credentials') {
-                        docker.image("your_dockerhub_username/your_project_name").push("latest")
+                        docker.image("baseerburney/product-service").push("latest")
+                        docker.image("baseerburney/order-service").push("latest")
+                        docker.image("baseerburney/user-service").push("latest")
                     }
                 }
             }
@@ -100,20 +102,25 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Ensure KUBECONFIG is set up properly
-                    sh 'kubectl apply -f k8s/'
+                    withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
+                        sh 'kubectl apply -f k8s/deployment.yaml'
+                        sh 'kubectl apply -f k8s/service.yaml'
+                    }
                 }
             }
         }
     }
+
     post {
         always {
             echo 'Cleaning up workspace...'
             cleanWs()
-            echo 'Build or deployment completed.'
         }
         failure {
             echo 'Build or deployment failed. Please check the logs for details.'
+        }
+        success {
+            echo 'Build and deployment completed successfully!'
         }
     }
 }
