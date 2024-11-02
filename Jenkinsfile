@@ -8,6 +8,14 @@ pipeline {
             }
         }
 
+        stage('Check Environment') {
+            steps {
+                echo "Checking environment settings..."
+                sh 'echo Current PATH: $PATH'
+                sh 'which ansible'
+            }
+        }
+
         stage('Install Dependencies') {
             parallel {
                 stage('User Service Dependencies') {
