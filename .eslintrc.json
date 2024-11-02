@@ -1,17 +1,18 @@
 {
   "extends": [
     "eslint:recommended",
-    "plugin:react/recommended"
+    "plugin:react/recommended",
+    "plugin:@typescript-eslint/recommended"
   ],
   "settings": {
     "react": {
-      "version": "detect"  // Automatically detect the React version
+      "version": "detect"
     }
   },
   "env": {
     "browser": true,
     "es2021": true,
-     "jest": true
+    "jest": true  // Enables Jest globals like `test` and `expect`
   },
   "parserOptions": {
     "ecmaFeatures": {
@@ -21,11 +22,12 @@
     "sourceType": "module"
   },
   "plugins": [
-    "react"
+    "react",
+    "@typescript-eslint"
   ],
   "rules": {
     "no-unused-vars": "warn",
-    "no-console": "off"
+    "no-console": "off",
+    "@typescript-eslint/no-require-imports": "error" // Ensures ES6 imports are used instead of require()
   }
 }
-
