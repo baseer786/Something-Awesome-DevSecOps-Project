@@ -1,6 +1,6 @@
 // eslint.config.js
 import react from 'eslint-plugin-react';
-import typescript from '@typescript-eslint/eslint-plugin';
+import typescriptPlugin from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 
 export default [
@@ -8,40 +8,34 @@ export default [
         ignores: ["node_modules"], // Ignore node_modules by default
     },
     {
-        files: ["**/*.js", "**/*.ts"],
-        plugins: {
-            react,
-            "@typescript-eslint": typescript,
-        },
+        files: ["**/*.js", "**/*.ts", "**/*.jsx", "**/*.tsx"],
         languageOptions: {
             parser: typescriptParser,
             ecmaVersion: "latest",
             sourceType: "module",
             globals: {
-                browser: true,
-                es2021: true,
+                // Jest and browser globals
+                test: "readonly",
+                expect: "readonly",
+                jest: "readonly",
+                window: "readonly",
+                document: "readonly",
             },
+        },
+        plugins: {
+            react,
+            "@typescript-eslint": typescriptPlugin,
         },
         settings: {
             react: {
-                version: "detect"
-            }
+                version: "detect",
+            },
         },
         rules: {
             "no-unused-vars": "warn",
             "no-console": "off",
-            "@typescript-eslint/no-require-imports": "error"
-        }
-    },
-    {
-        // Separate configuration for test files to enable Jest globals
-        files: ["**/*.test.js", "**/*.test.ts"],
-        languageOptions: {
-            globals: {
-                test: true,
-                expect: true,
-                jest: true,
-            },
+            "@typescript-eslint/no-require-imports": "error",
         },
-    },
+    }
 ];
+
