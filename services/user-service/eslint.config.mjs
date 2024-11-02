@@ -1,71 +1,54 @@
 // eslint.config.mjs
 import globals from "globals";
-import pluginJs from "@eslint/js";
-import tseslint from "@typescript-eslint/eslint-plugin";
-import typescriptParser from "@typescript-eslint/parser";
-import pluginVue from "eslint-plugin-vue";
-import jest from "eslint-plugin-jest";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+import reactPlugin from "eslint-plugin-react";
+import jestPlugin from "eslint-plugin-jest";
 
 export default [
-  {
-    files: ["**/*.{js,mjs,cjs,ts,vue}"],
-    languageOptions: {
-      ecmaVersion: "latest",
-    }
-  },
-  {
-    files: ["**/*.js"],
-    languageOptions: {
-      sourceType: "commonjs",
-    }
-  },
-  {
-    files: ["**/*.ts"],
-    languageOptions: {
-      parser: typescriptParser,
-      sourceType: "module",
-    }
-  },
-  {
-    files: ["**/*.vue"],
-    languageOptions: {
-      parserOptions: {
-        parser: typescriptParser,
-        ecmaVersion: "latest",
-        sourceType: "module",
-      }
-    }
-  },
-  {
-    files: ["**/*.test.{js,ts}"],
-    plugins: {
-      jest,
+    {
+        ignores: ["node_modules"], // Ignore node_modules by default
     },
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-        jest: "readonly", // Enables Jest globals like `test`, `expect`
-      }
+    {
+        files: ["**/*.{js,mjs,cjs,ts,jsx,tsx}"],
+        languageOptions: {
+            parser: tsParser,
+            ecmaVersion: "latest",
+            sourceType: "module",
+            globals: {
+                ...globals.browser,
+                ...globals.node,
+                jest: "readonly", // Enables Jest globals like `test` and `expect`
+            },
+        },
+        plugins: {
+            "@typescript-eslint": tsPlugin,
+            react: reactPlugin,
+            jest: jestPlugin,
+        },
+        settings: {
+            react: {
+                version: "detect",
+            },
+        },
+        rules: {
+            "no-unused-vars": "warn",
+            "no-console": "off",
+            "@typescript-eslint/no-require-imports": "error",
+        },
     },
-    rules: {
-      "jest/no-disabled-tests": "warn",
-      "jest/no-focused-tests": "error",
-      "jest/no-identical-title": "error",
-      "jest/prefer-to-have-length": "warn",
-      "jest/valid-expect": "error",
-    }
-  },
-  {
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.node,
-      }
-    }
-  },
-  pluginJs.configs.recommended,
-  tseslint.configs.recommended,
-  pluginVue.configs["flat/essential"],
+    // Jest-specific rules for test files
+    {
+        files: ["**/*.test.js", "**/*.test.ts"],
+        plugins: {
+            jest: jestPlugin,
+        },
+        rules: {
+            "jest/no-disabled-tests": "warn",
+            "jest/no-focused-tests": "error",
+            "jest/no-identical-title": "error",
+            "jest/prefer-to-have-length": "warn",
+            "jest/valid-expect": "error",
+        },
+    },
 ];
-git commit -m "Update ESLint config to support Jest, TypeScript, and Vue"
