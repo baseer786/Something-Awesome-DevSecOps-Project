@@ -2,22 +2,23 @@ pipeline {
     agent any
     environment {
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
-        KUBECONFIG = '/Users/baseerikram/.kube/config'
+        KUBECONFIG = '/Users/baseerikram/.kube/config' // Update this path if necessary
     }
-
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
+                script {
+                    checkout scm
+                }
             }
         }
-
+        
         stage('Test Docker Access') {
             steps {
                 sh 'docker --version'
             }
         }
-
+        
         stage('Install Dependencies') {
             steps {
                 script {
@@ -27,100 +28,111 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Run ESLint') {
             steps {
                 script {
                     docker.image('node:14').inside {
-                        sh 'npm run lint || echo "Linting errors were found."'
+                        sh 'npx eslint .'
                     }
                 }
             }
         }
-
+        
         stage('Run Tests') {
             steps {
                 script {
                     docker.image('node:14').inside {
-                        sh 'npm test || echo "Some tests failed."'
+                        sh 'npm test'
                     }
                 }
             }
         }
-
+        
         stage('Security Scans') {
             parallel {
                 stage('OWASP Dependency-Check') {
                     steps {
-                        echo 'Running OWASP Dependency-Check...'
-                        // Add Dependency-Check commands here
+                        script {
+                            docker.image('owasp/dependency-check').inside {
+                                sh 'dependency-check.sh --project YourProject --scan .'
+                            }
+                        }
                     }
                 }
+                
                 stage('Snyk Scan') {
                     steps {
-                        echo 'Running Snyk Scan...'
-                        // Add Snyk commands here
+                        script {
+                            docker.image('snyk/snyk-cli').inside {
+                                withCredentials([string(credentialsId: 'snyk-token', variable: 'SNYK_TOKEN')]) {
+                                    sh 'snyk test'
+                                }
+                            }
+                        }
                     }
                 }
+                
                 stage('SonarQube Analysis') {
                     steps {
-                        echo 'Running SonarQube Analysis...'
-                        // Add SonarQube commands here
+                        script {
+                            withSonarQubeEnv('SonarQube') {
+                                sh 'mvn sonar:sonar'
+                            }
+                        }
                     }
                 }
+                
                 stage('Gauntlt Security Tests') {
                     steps {
-                        echo 'Running Gauntlt Security Tests...'
-                        // Add Gauntlt commands here
+                        script {
+                            docker.image('gauntlt/gauntlt').inside {
+                                sh 'gauntlt attack'
+                            }
+                        }
                     }
                 }
             }
         }
-
+        
         stage('Build Docker Images') {
             steps {
                 script {
-                    docker.build('baseerburney/product-service', 'product-service/')
-                    docker.build('baseerburney/order-service', 'order-service/')
-                    docker.build('baseerburney/user-service', 'user-service/')
+                    docker.build("baseerburney/${env.PROJECT_NAME}-service")
                 }
             }
         }
-
+        
         stage('Push Docker Images') {
             steps {
                 script {
-                    docker.withRegistry('', 'dockerhub-credentials') {
-                        docker.image("baseerburney/product-service").push("latest")
-                        docker.image("baseerburney/order-service").push("latest")
-                        docker.image("baseerburney/user-service").push("latest")
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
+                        sh 'docker push baseerburney/${env.PROJECT_NAME}-service'
                     }
                 }
             }
         }
-
+        
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    withEnv(["KUBECONFIG=${KUBECONFIG}"]) {
-                        sh 'kubectl apply -f k8s/deployment.yaml'
-                        sh 'kubectl apply -f k8s/service.yaml'
+                    withEnv(["KUBECONFIG=${env.KUBECONFIG}"]) {
+                        sh '''
+                        kubectl apply -f kubernetes/deployment.yaml
+                        kubectl apply -f kubernetes/service.yaml
+                        '''
                     }
                 }
             }
         }
     }
-
     post {
         always {
-            echo 'Cleaning up workspace...'
             cleanWs()
+            echo 'Build or deployment completed. Check logs for details.'
         }
         failure {
             echo 'Build or deployment failed. Please check the logs for details.'
-        }
-        success {
-            echo 'Build and deployment completed successfully!'
         }
     }
 }
