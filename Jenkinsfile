@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
         VIRTUAL_ENV = '/Users/baseerikram/venvs/ansible-env'
     }
 
@@ -127,9 +126,9 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                withCredentials([string(credentialsId: 'dockerhub-credentials', variable: 'DOCKERHUB_PASSWORD')]) {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
                     sh '''
-                        echo $DOCKERHUB_PASSWORD | docker login -u baseerburney --password-stdin
+                        echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
 
                         docker push baseerburney/user-service:latest
                         docker push baseerburney/order-service:latest
@@ -157,7 +156,7 @@ pipeline {
                     echo "Activating virtual environment at $VIRTUAL_ENV for deployment"
                     sh """
                         source $VIRTUAL_ENV/bin/activate
-                        ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --timeout=30 --skip-tags gather_facts
+                        ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --skip-tags gather_facts
                     """
                 }
             }
@@ -168,7 +167,7 @@ pipeline {
         always {
             echo 'Cleaning up...'
             sh 'docker logout'
-            sh 'deactivate || true'
+            sh 'deactivate || true'  // Ignore error if deactivate is not found
         }
         failure {
             echo 'Deployment failed. Please check the logs.'
