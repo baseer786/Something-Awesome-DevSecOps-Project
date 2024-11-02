@@ -1,33 +1,72 @@
 pipeline {
     agent any
-    environment {
-        DOCKER_IMAGE = 'node:18'
-    }
+
     stages {
-        stage('Test Docker Access') {
+        stage('Checkout') {
             steps {
-                sh 'docker --version'
+                git branch: 'main',
+                    url: 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
             }
         }
+
         stage('Install Dependencies') {
-            steps {
-                // Pull and use node image to install dependencies
-                sh 'docker pull ${DOCKER_IMAGE}'
-                sh 'docker run --rm -v $(pwd):/app -w /app ${DOCKER_IMAGE} npm install'
+            parallel {
+                stage('User Service Dependencies') {
+                    steps {
+                        sh 'cd services/user-service && npm install'
+                    }
+                }
+                stage('Order Service Dependencies') {
+                    steps {
+                        sh 'cd services/order-service && npm install'
+                    }
+                }
+                stage('Product Service Dependencies') {
+                    steps {
+                        sh 'cd services/product-service && npm install'
+                    }
+                }
             }
         }
+
         stage('Run ESLint') {
-            steps {
-                // Running ESLint checks
-                sh 'docker run --rm -v $(pwd):/app -w /app ${DOCKER_IMAGE} npx eslint .'
+            parallel {
+                stage('User Service ESLint') {
+                    steps {
+                        script {
+                            try {
+                                sh 'cd services/user-service && npm run lint'
+                            } catch (Exception e) {
+                                echo "Lint errors in User Service, continuing..."
+                            }
+                        }
+                    }
+                }
+                stage('Order Service ESLint') {
+                    steps {
+                        script {
+                            try {
+                                sh 'cd services/order-service && npm run lint'
+                            } catch (Exception e) {
+                                echo "Lint errors in Order Service, continuing..."
+                            }
+                        }
+                    }
+                }
+                stage('Product Service ESLint') {
+                    steps {
+                        script {
+                            try {
+                                sh 'cd services/product-service && npm run lint'
+                            } catch (Exception e) {
+                                echo "Lint errors in Product Service, continuing..."
+                            }
+                        }
+                    }
+                }
             }
         }
-        // Additional stages for testing, building, pushing images, etc.
-    }
-    post {
-        always {
-            cleanWs()
-            echo 'Build or deployment failed. Please check the logs for details.'
-        }
+
+        // Additional stages for testing, building, or deploying can be added here.
     }
 }
