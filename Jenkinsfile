@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        VIRTUAL_ENV = '/Users/baseerikram/venvs/ansible-env'
-        PATH = "${VIRTUAL_ENV}/bin:$PATH"
+        VIRTUAL_ENV = '/Users/baseerikram/venvs/ansible-env' // Adjust this path as necessary
     }
 
     stages {
@@ -18,7 +17,6 @@ pipeline {
                 echo "Checking environment settings..."
                 sh 'echo Current PATH: $PATH'
                 sh 'which ansible'
-                sh 'python --version'
             }
         }
 
@@ -128,33 +126,25 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                retry(3) {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                        sh '''
-                            echo "Attempting Docker login..."
-                            echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin || exit 1
-                            echo "Pushing user-service image..."
-                            docker push baseerburney/user-service:latest || exit 1
-                            echo "Pushing order-service image..."
-                            docker push baseerburney/order-service:latest || exit 1
-                            echo "Pushing product-service image..."
-                            docker push baseerburney/product-service:latest || exit 1
-                        '''
-                    }
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                    sh '''
+                        echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
+                        docker push baseerburney/user-service:latest
+                        docker push baseerburney/order-service:latest
+                        docker push baseerburney/product-service:latest
+                    '''
                 }
             }
         }
 
         stage('Setup Ansible') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    script {
-                        echo "Activating virtual environment at ${env.VIRTUAL_ENV}"
-                        sh '''
-                            source ${VIRTUAL_ENV}/bin/activate
-                            ansible-galaxy collection install kubernetes.core
-                        '''
-                    }
+                script {
+                    echo 'Activating virtual environment at $VIRTUAL_ENV'
+                    sh '''
+                        source $VIRTUAL_ENV/bin/activate
+                        ansible-galaxy collection install kubernetes.core
+                    '''
                 }
             }
         }
@@ -163,11 +153,11 @@ pipeline {
             steps {
                 timeout(time: 10, unit: 'MINUTES') {
                     script {
-                        echo 'Starting Kubernetes deployment...'
+                        echo 'Activating virtual environment at $VIRTUAL_ENV for deployment'
                         sh '''
-                            source ${VIRTUAL_ENV}/bin/activate
-                            ansible localhost -m ping -i ansible/inventory -e ansible_connection=local
-                            ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local -vvv
+                            source $VIRTUAL_ENV/bin/activate
+                            ansible localhost -m ping -i ansible/inventory --inventory-plugin ini
+                            ansible-playbook -i ansible/inventory --inventory-plugin ini ansible/deploy.yml -e ansible_connection=local --timeout=30 -vvv
                         '''
                     }
                 }
@@ -178,10 +168,14 @@ pipeline {
     post {
         always {
             echo 'Cleaning up...'
-            sh 'docker logout' // Ensure logout after completion
+            sh 'docker logout'
+            sh 'deactivate || true'
+        }
+        success {
+            echo 'Deployment completed successfully!'
         }
         failure {
-            echo 'Build failed. Please check logs for details.'
+            echo 'Deployment failed. Please check the logs.'
         }
     }
 }
