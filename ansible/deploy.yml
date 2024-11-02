@@ -1,4 +1,7 @@
 - hosts: localhost
+  gather_facts: yes
+  gather_timeout: 10  # Timeout for gathering facts in seconds
+
   vars:
      ansible_python_interpreter: "/Users/baseerikram/venvs/ansible-env/bin/python3"
   tasks:
