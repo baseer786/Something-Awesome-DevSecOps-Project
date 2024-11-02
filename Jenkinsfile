@@ -1,13 +1,8 @@
 pipeline {
     agent any
 
-    environment {
-        // Define the Docker credentials ID and the branch if necessary
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
-    }
-
     stages {
-        stage('Clone repository') {
+        stage('Clone Repository') {
             steps {
                 git branch: 'main', url: 'https://github.com/baseer786/Something-Awesome-DevSecOps-Project.git'
             }
@@ -28,7 +23,7 @@ pipeline {
             steps {
                 script {
                     // Logging in to Docker Hub and pushing images using the correct credentials ID
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials') {
                         sh "docker push baseerburney/user-service:latest"
                         sh "docker push baseerburney/order-service:latest"
                         sh "docker push baseerburney/product-service:latest"
