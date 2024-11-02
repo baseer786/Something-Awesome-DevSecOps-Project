@@ -1,7 +1,9 @@
 pipeline {
     agent any
+
     environment {
-        VENV_PATH = '/Users/baseerikram/venvs/ansible-env'  // Update if the path is different
+        VIRTUAL_ENV = '/Users/baseerikram/venvs/ansible-env'
+        PATH = "${VIRTUAL_ENV}/bin:$PATH"
     }
 
     stages {
@@ -16,6 +18,7 @@ pipeline {
                 echo "Checking environment settings..."
                 sh 'echo Current PATH: $PATH'
                 sh 'which ansible'
+                sh 'python --version'
             }
         }
 
@@ -125,42 +128,60 @@ pipeline {
 
         stage('Push Docker Images') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
-                    sh 'echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin'
-                    sh 'docker push baseerburney/user-service:latest'
-                    sh 'docker push baseerburney/order-service:latest'
-                    sh 'docker push baseerburney/product-service:latest'
+                retry(3) {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                        sh '''
+                            echo "Attempting Docker login..."
+                            echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin || exit 1
+                            echo "Pushing user-service image..."
+                            docker push baseerburney/user-service:latest || exit 1
+                            echo "Pushing order-service image..."
+                            docker push baseerburney/order-service:latest || exit 1
+                            echo "Pushing product-service image..."
+                            docker push baseerburney/product-service:latest || exit 1
+                        '''
+                    }
                 }
             }
         }
 
         stage('Setup Ansible') {
             steps {
-                script {
-                    sh """
-                        echo "Activating virtual environment at ${env.VENV_PATH}"
-                        source ${env.VENV_PATH}/bin/activate
-                        ansible-galaxy collection install kubernetes.core || echo "Collection already installed or installation failed"
-                    """
+                timeout(time: 5, unit: 'MINUTES') {
+                    script {
+                        echo "Activating virtual environment at ${env.VIRTUAL_ENV}"
+                        sh '''
+                            source ${VIRTUAL_ENV}/bin/activate
+                            ansible-galaxy collection install kubernetes.core
+                        '''
+                    }
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    sh """
-                        echo "Activating virtual environment at ${env.VENV_PATH} for deployment"
-                        source ${env.VENV_PATH}/bin/activate
-                        
-                        # Test ansible connection to localhost
-                        ansible localhost -m ping -i ansible/inventory || echo "Ansible ping to localhost failed"
-
-                        # Run playbook with limited fact gathering and timeout
-                        ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --timeout=30
-                    """
+                timeout(time: 10, unit: 'MINUTES') {
+                    script {
+                        echo 'Starting Kubernetes deployment...'
+                        sh '''
+                            source ${VIRTUAL_ENV}/bin/activate
+                            ansible localhost -m ping -i ansible/inventory -e ansible_connection=local
+                            ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local -vvv
+                        '''
+                    }
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Cleaning up...'
+            sh 'docker logout' // Ensure logout after completion
+        }
+        failure {
+            echo 'Build failed. Please check logs for details.'
         }
     }
 }
