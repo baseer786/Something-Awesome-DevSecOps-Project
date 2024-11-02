@@ -12,18 +12,18 @@ pipeline {
         }
         stage('Install Dependencies') {
             steps {
-                sh 'docker pull node:14'
-                sh 'docker run --rm node:14 npm install'
+                sh 'docker pull node:18'
+                sh 'docker run --rm -v $PWD:/app node:18 npm install'
             }
         }
         stage('Run ESLint') {
             steps {
-                sh 'docker run --rm -v $PWD:/app node:14 npx eslint .'
+                sh 'docker run --rm -v $PWD:/app node:18 npx eslint .'
             }
         }
         stage('Run Tests') {
             steps {
-                sh 'docker run --rm -v $PWD:/app node:14 npm test'
+                sh 'docker run --rm -v $PWD:/app node:18 npm test'
             }
         }
         stage('Build Docker Images') {
