@@ -20,7 +20,6 @@ export default [
             globals: {
                 browser: true,
                 es2021: true,
-                jest: true  // Specifies Jest globals like `test` and `expect`
             },
         },
         settings: {
@@ -33,5 +32,16 @@ export default [
             "no-console": "off",
             "@typescript-eslint/no-require-imports": "error"
         }
-    }
+    },
+    {
+        // Separate configuration for test files to enable Jest globals
+        files: ["**/*.test.js", "**/*.test.ts"],
+        languageOptions: {
+            globals: {
+                test: true,
+                expect: true,
+                jest: true,
+            },
+        },
+    },
 ];
