@@ -97,6 +97,20 @@ pipeline {
             }
         }
 
+        stage('OWASP Dependency-Check') {
+            steps {
+                dir('services/user-service') {
+                    sh '$(brew --prefix dependency-check)/bin/dependency-check --project "User Service" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd'
+                }
+                dir('services/order-service') {
+                    sh '$(brew --prefix dependency-check)/bin/dependency-check --project "Order Service" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd'
+                }
+                dir('services/product-service') {
+                    sh '$(brew --prefix dependency-check)/bin/dependency-check --project "Product Service" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd'
+                }
+            }
+        }
+
         stage('Build Docker Images') {
             parallel {
                 stage('User Service Docker Build') {
