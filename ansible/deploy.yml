@@ -1,5 +1,5 @@
 - hosts: localhost
-  gather_facts: yes
+  gather_facts: no
   gather_timeout: 10  # Timeout for gathering facts in seconds
 
   vars:

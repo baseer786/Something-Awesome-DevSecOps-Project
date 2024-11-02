@@ -156,7 +156,7 @@ pipeline {
                     echo "Activating virtual environment at $VIRTUAL_ENV for deployment"
                     sh """
                         source $VIRTUAL_ENV/bin/activate
-                        ansible-playbook -i ansible/inventory ansible/deploy.yml -e ansible_connection=local --skip-tags gather_facts
+                        ansible-playbook -i ansible/inventory ansible/deploy.yml --connection=local
                     """
                 }
             }
