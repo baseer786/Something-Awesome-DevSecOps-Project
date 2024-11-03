@@ -130,7 +130,7 @@ cd ../product-service && docker build -t product-service:latest .
 Activate the Ansible virtual environment and deploy to Kubernetes:
 
 ```bash
-source /Users/baseerikram/venvs/ansible-env/bin/activate
+source /Users/venvs/ansible-env/bin/activate
 ansible-playbook -i ansible/inventory ansible/deploy.yml --connection=local
 ```
 
