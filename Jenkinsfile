@@ -3,21 +3,13 @@ pipeline {
     environment {
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Using your Jenkins DockerHub credentials ID
         DOCKER_USERNAME = 'baseerburney'
-        PATH = "/usr/local/bin:$PATH"  // Adding Ansible to PATH
-        OWASP_REPORTS_DIR = "/Users/baseerikram/owasp-reports" // Persistent directory for storing OWASP reports
+        SNYK_TOKEN = credentials('snyk_api_token') // Snyk API Token from Jenkins credentials
+        PATH = "/usr/local/bin:$PATH" // Adding Ansible to PATH
     }
     stages {
         stage('Declarative: Checkout SCM') {
             steps {
                 checkout scm
-            }
-        }
-
-        stage('Check Environment') {
-            steps {
-                echo 'Checking environment settings...'
-                sh 'echo Current PATH: $PATH'
-                sh 'which ansible'
             }
         }
 
@@ -73,26 +65,28 @@ pipeline {
             }
         }
 
-        stage('Run Tests') {
-            parallel {
-                stage('User Service Tests') {
-                    steps {
-                        dir('services/user-service') {
-                            sh 'npm test'
+        stage('Run Snyk Test') {
+            steps {
+                script {
+                    def services = ['user-service', 'order-service', 'product-service']
+                    services.each { service ->
+                        dir("services/${service}") {
+                            sh 'npm install -g snyk'  // Install Snyk CLI
+                            sh 'snyk auth ${SNYK_TOKEN}' // Authenticate with Snyk
+                            sh 'snyk test' // Run Snyk test on the codebase
                         }
                     }
                 }
-                stage('Order Service Tests') {
-                    steps {
-                        dir('services/order-service') {
-                            sh 'npm test'
-                        }
-                    }
-                }
-                stage('Product Service Tests') {
-                    steps {
-                        dir('services/product-service') {
-                            sh 'npm test'
+            }
+        }
+
+        stage('Run Snyk Monitor') {
+            steps {
+                script {
+                    def services = ['user-service', 'order-service', 'product-service']
+                    services.each { service ->
+                        dir("services/${service}") {
+                            sh 'snyk monitor'  // Send results to Snyk dashboard
                         }
                     }
                 }
@@ -103,19 +97,15 @@ pipeline {
             steps {
                 script {
                     def services = ['user-service', 'order-service', 'product-service']
-                    for (service in services) {
+                    services.each { service ->
                         dir("services/${service}") {
-                            sh """
-                                \$(brew --prefix dependency-check)/bin/dependency-check --project "${service}" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd
-                            """
-                            sh """
-                                mkdir -p ${env.OWASP_REPORTS_DIR}/${service}
-                                mv ./dependency-check-report/* ${env.OWASP_REPORTS_DIR}/${service}/
-                            """
+                            sh '$(brew --prefix dependency-check)/bin/dependency-check --project "${service}" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd'
+                            sh 'mkdir -p ../../owasp-reports/${service}'
+                            sh 'mv ./dependency-check-report/* ../../owasp-reports/${service}/'
                         }
                     }
                 }
-                echo "OWASP Dependency-Check reports are stored in ${env.OWASP_REPORTS_DIR}. You can retrieve them from this folder."
+                echo 'OWASP Dependency-Check reports can be retrieved from the owasp-reports folder in the Jenkins workspace.'
             }
         }
 
@@ -179,6 +169,7 @@ pipeline {
                     source /Users/baseerikram/venvs/ansible-env/bin/activate
                     ansible-playbook -i ansible/inventory ansible/deploy.yml --connection=local
                     '''
+                    echo 'You can access the Kubernetes dashboard by running: minikube dashboard'
                 }
             }
         }
@@ -198,8 +189,6 @@ pipeline {
                     kubectl logs $pod
                 done
                 '''
-                // Provide instruction for the Kubernetes Dashboard
-                echo 'To view the Kubernetes dashboard, please run "minikube dashboard" in a separate terminal window.'
             }
         }
 
@@ -217,7 +206,8 @@ pipeline {
     }
     post {
         always {
-            echo 'Pipeline finished. Cleaning workspace, but OWASP reports are saved to the persistent directory.'
+            echo 'Pipeline finished. Cleaning workspace.'
+            echo 'Note: Snyk vulnerabilities report can be accessed at https://app.snyk.io after the pipeline completes.'
             cleanWs()
         }
     }
