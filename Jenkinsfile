@@ -1,9 +1,10 @@
 pipeline {
     agent any
     environment {
-	PATH = "/usr/local/bin:$PATH"  // Adding Ansible to PATH
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Using your Jenkins DockerHub credentials ID
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Jenkins DockerHub credentials ID
         DOCKER_USERNAME = 'baseerburney'
+        OWASP_REPORT_DIR = "${WORKSPACE}/owasp-reports"
+        PATH = "/usr/local/bin:$PATH"  // Adding Ansible to PATH
     }
     stages {
         stage('Declarative: Checkout SCM') {
@@ -100,14 +101,20 @@ pipeline {
 
         stage('OWASP Dependency-Check') {
             steps {
+                script {
+                    sh "mkdir -p ${env.OWASP_REPORT_DIR}"
+                }
                 dir('services/user-service') {
                     sh '$(brew --prefix dependency-check)/bin/dependency-check --project "User Service" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd'
+                    sh "mv ./dependency-check-report/* ${env.OWASP_REPORT_DIR}/user-service/"
                 }
                 dir('services/order-service') {
                     sh '$(brew --prefix dependency-check)/bin/dependency-check --project "Order Service" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd'
+                    sh "mv ./dependency-check-report/* ${env.OWASP_REPORT_DIR}/order-service/"
                 }
                 dir('services/product-service') {
                     sh '$(brew --prefix dependency-check)/bin/dependency-check --project "Product Service" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd'
+                    sh "mv ./dependency-check-report/* ${env.OWASP_REPORT_DIR}/product-service/"
                 }
             }
         }
@@ -176,6 +183,13 @@ pipeline {
             }
         }
 
+        stage('Run Kubernetes Dashboard') {
+            steps {
+                echo 'Starting Kubernetes Dashboard...'
+                sh 'minikube dashboard --url &'
+            }
+        }
+
         stage('Kubernetes Health Checks') {
             steps {
                 echo 'Running Kubernetes Health Checks...'
@@ -209,6 +223,7 @@ pipeline {
     post {
         always {
             echo 'Pipeline finished. Cleaning workspace.'
+            sh "echo 'OWASP Reports are saved in ${env.OWASP_REPORT_DIR}'"
             cleanWs()
         }
     }
