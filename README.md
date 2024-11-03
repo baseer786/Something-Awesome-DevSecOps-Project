@@ -216,10 +216,3 @@ Open the Minikube dashboard:
 ```bash
 make dashboard
 ```
-
-## Summary
-
-After setting everything up, you can use the make commands to easily manage and verify the services. For a new user, it is recommended to first manually run through the steps to understand the flow, and then use `make setup` and `make dashboard` for quicker checks.
-
-Happy DevSecOps journey! 🎉
-
