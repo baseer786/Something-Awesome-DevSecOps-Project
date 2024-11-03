@@ -4,6 +4,7 @@ pipeline {
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Using your Jenkins DockerHub credentials ID
         DOCKER_USERNAME = 'baseerburney'
         PATH = "/usr/local/bin:$PATH"  // Adding Ansible to PATH
+        OWASP_REPORTS_DIR = "/Users/baseerikram/owasp-reports" // Persistent directory for storing OWASP reports
     }
     stages {
         stage('Declarative: Checkout SCM') {
@@ -108,12 +109,13 @@ pipeline {
                                 \$(brew --prefix dependency-check)/bin/dependency-check --project "${service}" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd
                             """
                             sh """
-                                mkdir -p ../../owasp-reports/${service}
-                                mv ./dependency-check-report/* ../../owasp-reports/${service}/
+                                mkdir -p ${env.OWASP_REPORTS_DIR}/${service}
+                                mv ./dependency-check-report/* ${env.OWASP_REPORTS_DIR}/${service}/
                             """
                         }
                     }
                 }
+                echo "OWASP Dependency-Check reports are stored in ${env.OWASP_REPORTS_DIR}. You can retrieve them from this folder."
             }
         }
 
@@ -215,7 +217,7 @@ pipeline {
     }
     post {
         always {
-            echo 'Pipeline finished. Cleaning workspace.'
+            echo 'Pipeline finished. Cleaning workspace, but OWASP reports are saved to the persistent directory.'
             cleanWs()
         }
     }
