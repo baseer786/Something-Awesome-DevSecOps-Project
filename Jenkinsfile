@@ -105,7 +105,7 @@ pipeline {
                     for (service in services) {
                         dir("services/${service}") {
                             sh """
-                                $(brew --prefix dependency-check)/bin/dependency-check --project "${service}" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd
+                                \$(brew --prefix dependency-check)/bin/dependency-check --project "${service}" --scan . --format ALL --out ./dependency-check-report --nvdApiKey 581c658a-1edf-40a7-aa4b-b5772a7699cd
                             """
                             sh """
                                 mkdir -p ../../owasp-reports/${service}
@@ -196,7 +196,7 @@ pipeline {
                     kubectl logs $pod
                 done
                 '''
-                // instruction for the Kubernetes Dashboard
+                // Provide instruction for the Kubernetes Dashboard
                 echo 'To view the Kubernetes dashboard, please run "minikube dashboard" in a separate terminal window.'
             }
         }
