@@ -2,5 +2,5 @@ projectKey=user-service
 serverUrl=http://localhost:9000
 serverVersion=10.7.0.96327
 dashboardUrl=http://localhost:9000/dashboard?id=user-service
-ceTaskId=cb298129-e0e7-483e-806d-d62da6f15158
-ceTaskUrl=http://localhost:9000/api/ce/task?id=cb298129-e0e7-483e-806d-d62da6f15158
+ceTaskId=2c54b12b-2d87-4302-8d7e-809aff7073a5
+ceTaskUrl=http://localhost:9000/api/ce/task?id=2c54b12b-2d87-4302-8d7e-809aff7073a5

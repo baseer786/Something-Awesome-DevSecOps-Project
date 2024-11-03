@@ -1,6 +1,7 @@
 pipeline {
     agent any
     environment {
+	PATH = "/usr/local/bin:$PATH"  // Adding Ansible to PATH
         DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // Using your Jenkins DockerHub credentials ID
         DOCKER_USERNAME = 'baseerburney'
     }
