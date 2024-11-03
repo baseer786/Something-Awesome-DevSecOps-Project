@@ -1,4 +1,4 @@
-# Something Awesome - DevSecOps Project
+# Something-Awesome-DevSecOps-Project
 
 This project was developed for course COMP6441 - Security Engineering and Cyber Security called "Something Awesome Project" 
 This project repo provides a template for DevSecOps pipeline using Docker, Kubernetes, Jenkins, Ansible, OWASP Dependency Check, Snyk, and other security tools. The pipeline enables continuous integration, deployment, and security scanning of the microservices.
